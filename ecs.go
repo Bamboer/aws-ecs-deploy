@@ -1,38 +1,33 @@
 package main
 
 import (
+	"ecs/component"
 	"flag"
-	//      "github.com/aws/aws-sdk-go/aws"
-	//      "github.com/aws/aws-sdk-go/aws/awserr"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"io"
 	"log"
 	"os"
-	//        "strings"
-	"ecs/component"
-	//  "github.com/aws/aws-sdk-go/service/elb"
-	//  "github.com/aws/aws-sdk-go/service/ecs"
-	//  "github.com/aws/aws-sdk-go/service/ecr"
 )
 
 var (
 	Info  *log.Logger
 	Error *log.Logger
 
-	protocol        = flag.String("protocol", "HTTP", "ELB and Target group comunication protocol.HTTP|TCP|UDP|HTTPS|TLS|TCP_UDP default:HTTP")
+	protocol        = flag.String("protocol", "HTTP", "ELB and Target group comunication protocol. HTTP|TCP|UDP|HTTPS|TLS|TCP_UDP")
 	protocolversion = flag.String("protocolversion", "HTTP1", "Protocol version GRPC|HTTP2|HTTP1")
 	elb_name        = flag.String("elb.name", "rewards-campaignstg-elb", "The Elb name.")
-	elb_port        = flag.String("elb.port", "", "The Elb listening port.")
 	elb_type        = flag.String("elb.type", "application", "The Elb type.application|network|gateway ")
-	elb_scheme      = flag.String("elb.scheme", "", "The Elb type.internet-facing|internal")
+
+	elb_listener_port = flag.Int64("elb.listener_port", 80, "elb listener port for ecs .default:80")
+	elb_scheme        = flag.String("elb.scheme", "internet-facing", "The Elb type. internet-facing|internal")
 
 	target_group_name = flag.String("target_group.name", "", "Target group name for ecs .")
-	target_group_type = flag.String("target_group.type", "IP", "Target group target type for ecs .INSTANCE|IP|Lambda default:IP")
-	target_group_port = flag.Int64("target_group.port", 80, "Target group port for ecs .")
+	target_group_type = flag.String("target_group.type", "IP", "Target group target type for ecs. INSTANCE|IP|Lambda ")
+	target_group_port = flag.Int64("target_group.port", 80, "Target group port for ecs.")
 
 	security_group = flag.String("ecs.security_group", "sg-017e90ce7d6cd9b97", "Security groups name like: xxxx xxxx xxxx")
-	subnet         = flag.String("subnet", "subnet-0e43caddfe68f606a subnet-00e19262c15c1de8b", "VPC's Subnets name like: xxxx xxxx xxxx")
+	subnets        = flag.String("subnet", "subnet-0e43caddfe68f606a subnet-00e19262c15c1de8b", "VPC's Subnets name like: xxxx xxxx xxxx")
 	vpcid          = flag.String("vpcid", "vpc-3cbdfa58", "VPC id.")
 
 	ecr_name = flag.String("ecr.name", "", "ECR name.")
@@ -54,7 +49,7 @@ var (
 	ecs_service_name     = flag.String("ecs.ecs_service.name", "", "The ecs service info.")
 	ecs_service_task_num = flag.Int64("ecs.ecs_service.task_num", 1, "The ecs service num.")
 	ecs_service_pubip    = flag.String("ecs.ecs_service.pubip", "ENABLED", "The ecs service wether public ip DISABLED|ENABLED.")
-	ecs_service_type     = flag.String("ecs.ecs_service.type", "FARGATE", "The ecs service launch type EC2|FARGATE. default:FARGATE")
+	ecs_service_type     = flag.String("ecs.ecs_service.type", "FARGATE", "The ecs service launch type  EC2|FARGATE.")
 
 	version = flag.Bool("v", false, "v1.0")
 )
@@ -86,4 +81,22 @@ func main() {
 	}))
 	ecr_arn := component.EcrCreator(sess, *ecr_name)
 	fmt.Println(*ecr_arn)
+
+	targetgroup_arn := component.CreateTargetGroup(sess, *elb_name, *target_group_name, *target_group_type, *protocol, *protocolversion, *vpcid, *target_group_port)
+	fmt.Println(*targetgroup_arn)
+
+	elb_name_arn := component.CreateLB(sess, *elb_name, *elb_type, *elb_scheme, *security_group, *subnets)
+	fmt.Println(*elb_name_arn)
+
+	listener_arn := component.CreateListener(sess, *elb_name, *protocol, *elb_name_arn, *targetgroup_arn, *elb_listener_port)
+	fmt.Println(*listener_arn)
+
+	ecscluster_arn := component.CreateEcsCluster(sess, *ecs_cluster)
+	fmt.Println(*ecscluster_arn)
+
+	ecstask_arn := component.CreateEcsTask(sess, *ecs_task_cpu, *ecs_task_mem, *ecs_task_container_name, *ecs_task_container_image, *ecs_task_name, *ecs_task_role, *ecs_task_exerole, *ecs_task_mode, *ecs_task_container_networkmode)
+	fmt.Println(*ecstask_arn)
+
+	ecsservice_arn := component.CreateEcsService(sess, *ecs_service_task_num, *ecs_task_container_port, *ecs_cluster, *ecs_service_name, *ecs_task_container_name, *security_group, *ecs_service_type, *elb_name, *ecstask_arn, *targetgroup_arn, *subnets, *ecs_service_pubip)
+	fmt.Println(*ecsservice_arn)
 }
