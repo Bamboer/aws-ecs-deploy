@@ -27,7 +27,7 @@ var (
 	target_group_port = flag.Int64("target_group.port", 80, "Target group port for ecs.")
 
 	security_group = flag.String("ecs.security_group", "sg-017e90ce7d6cd9b97", "Security groups name like: xxxx xxxx xxxx")
-	subnets        = flag.String("subnet", "subnet-0e43caddfe68f606a subnet-00e19262c15c1de8b", "VPC's Subnets name like: xxxx xxxx xxxx")
+	subnets        = flag.String("subnets", "subnet-0e43caddfe68f606a subnet-00e19262c15c1de8b", "VPC's Subnets name like: xxxx xxxx xxxx")
 	vpcid          = flag.String("vpcid", "vpc-3cbdfa58", "VPC id.")
 
 	ecr_name = flag.String("ecr.name", "", "ECR name.")
