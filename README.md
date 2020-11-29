@@ -3,7 +3,7 @@
 
 ### Parameter
 
-###### Below Parameter is need inputed
+###### Below Parameter is need inputed: 
 -ecr.name  <br>
 
 -ecs.ecs_cluster.name <br>
@@ -17,7 +17,7 @@
 
 -target_group.name <br>
 
-###### default value setted
+###### default value setted: 
 -ecs.ecs_service.pubip=ENABLED <br>
 -ecs.ecs_service.task_num=1 <br>
 -ecs.ecs_service.type=FARGATE <br>
@@ -43,4 +43,4 @@
 
 -vpcid = <br>
 
--subnets= <br>
+-subnets= <br> 
