@@ -79,8 +79,8 @@ func main() {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
-	ecr_arn := component.EcrCreator(sess, *ecr_name)
-	fmt.Println(*ecr_arn)
+	ecr_repositoryuri := component.EcrCreator(sess, *ecr_name)
+	fmt.Println(*ecr_repositoryuri)
 
 	targetgroup_arn := component.CreateTargetGroup(sess, *elb_name, *target_group_name, *target_group_type, *protocol, *protocolversion, *vpcid, *target_group_port)
 	fmt.Println(*targetgroup_arn)
@@ -94,7 +94,7 @@ func main() {
 	ecscluster_arn := component.CreateEcsCluster(sess, *ecs_cluster)
 	fmt.Println(*ecscluster_arn)
 
-	ecstask_arn := component.CreateEcsTask(sess, *ecs_task_cpu, *ecs_task_mem, *ecs_task_container_name, *ecs_task_container_image, *ecs_task_name, *ecs_task_role, *ecs_task_exerole, *ecs_task_mode, *ecs_task_container_networkmode)
+	ecstask_arn := component.CreateEcsTask(sess, *ecs_task_cpu, *ecs_task_mem, *ecs_task_container_name, *ecr_repositoryuri, *ecs_task_name, *ecs_task_role, *ecs_task_exerole, *ecs_task_mode, *ecs_task_container_networkmode)
 	fmt.Println(*ecstask_arn)
 
 	ecsservice_arn := component.CreateEcsService(sess, *ecs_service_task_num, *ecs_task_container_port, *ecs_cluster, *ecs_service_name, *ecs_task_container_name, *security_group, *ecs_service_type, *elb_name, *ecstask_arn, *targetgroup_arn, *subnets, *ecs_service_pubip)
