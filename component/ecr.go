@@ -58,7 +58,7 @@ func EcrCreator(sess *session.Session, repository_name string) *string {
 	} else {
 		Info.Println("ECR repository Exists.")
 		Info.Println("RepositoryArn: ", *result.Repositories[0].RepositoryArn, "RepositoryUri: ", *result.Repositories[0].RepositoryUri)
-		return result.Repositories[0].RepositoryArn
+		return result.Repositories[0].RepositoryUri
 	}
 	//
 	inputc := &ecr.CreateRepositoryInput{
@@ -92,5 +92,5 @@ func EcrCreator(sess *session.Session, repository_name string) *string {
 	}
 
 	Info.Println("RepositoryUri: ", *resultc.Repository.RepositoryUri, "RepositoryArn: ", *resultc.Repository.RepositoryArn)
-	return resultc.Repository.RepositoryArn
+	return resultc.Repository.RepositoryUri
 }
