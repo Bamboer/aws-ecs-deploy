@@ -11,7 +11,7 @@ from functools import reduce
 
 
 index = None
-host = 'host:9200'
+host = 'http://host'
 headers = { "Content-Type": "application/json" }
 
 p = r'^2'
@@ -35,7 +35,7 @@ def create_doc(data):
     if data['messageType'] == "CONTROL_MESSAGE":
         return None
     if "/aws/lambda/" in data["logGroup"]:
-        index = '{0}.{1}'.format(data["logGroup"].replace("/aws/lambda/",'').replace('/','_'),datetime.now().day%2).lower()
+        index = '{0}.{1}'.format(data["logGroup"].replace("/aws/lambda/",'').replace('/','_'),datetime.now().day).lower()
         url = host+'/'+index + '/_doc' + '/'  
         source["log_group"] = data["logGroup"]
         source["log_stream"] = data["logStream"]
@@ -67,10 +67,21 @@ def create_doc(data):
                 source["@timestamp"] = (ptime_result.group().strip()+'Z').replace(' ','T')   if re.match(r'[\d]{4}\-[0|1]?[\d]{1}\-[0-3]?[\d]{1}[T|\s]?',ptime_result.group()) else time.strftime("%Y-%m-%dT",time.localtime(time.time())) + ptime_result.group().replace(' ','Z')
             else:
                 source["message"] = str(source["message"]) + i["message"]
+                
+                if data['logEvents'].index(i) == len(data['logEvents'])-2 : 
+#                    print("LogEvents: ",data['logEvents'],"Length: ",len(data['logEvents']))
+                    source["message"] = reduce(lambda x,y:x+' '+y, re.split(r'\s+',source["message"]))
+                    req = request.Request(url ,data=bytes(json.dumps(source),'utf-8'), headers=headers,method='POST')
+                    r = request.urlopen(req)
+                    if not re.match(p,str(r.status)):
+                        print("doc create Failure Reason: {0}".format(r.read()))
+                        return
+                    print("Source: ",source)
 
 def index_manager(name):
     url = host+'/'+name
     req = request.Request(url,headers=headers,method='GET')
+
     try:
         r = request.urlopen(req)
         json_data = json.loads(r.read().decode('utf-8'))
