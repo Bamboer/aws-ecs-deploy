@@ -11,7 +11,7 @@ from functools import reduce
 
 
 index = None
-host = 'http:/'
+host = 'host'
 headers = { "Content-Type": "application/json" }
 
 p = r'^2'
@@ -55,7 +55,7 @@ def create_doc(data):
                         if not re.match(p,str(r.status)):
                             print("doc create Failure Reason: {0}".format(r.read()))
                             return
-                        print("Source: ",source)
+#                        print("Source: ",source)
                         source["message"] = str()
                 except Exception as e:
                     print("Upload ERROR: ",e)
@@ -67,8 +67,6 @@ def create_doc(data):
                 ptime_result = ptime.search(i["message"])
                 source["@timestamp"] = (ptime_result.group().strip()+'Z').replace(' ','T')   if re.match(r'[\d]{4}\-[0|1]?[\d]{1}\-[0-3]?[\d]{1}[T|\s]?',ptime_result.group()) else time.strftime("%Y-%m-%dT",time.localtime(time.time())) + ptime_result.group().replace(' ','Z')
             else:
-                source["message"] = str(source["message"]) + i["message"]
-                
                 if "END RequestId" in i["message"] or data['logEvents'].index(i) == len(data['logEvents']) - 1: 
 #                    print("LogEvents: ",data['logEvents'],"Length: ",len(data['logEvents']))
                     source["message"] = reduce(lambda x,y:x+' '+y, re.split(r'\s+',source["message"]))
@@ -78,11 +76,13 @@ def create_doc(data):
                     if not re.match(p,str(r.status)):
                         print("doc create Failure Reason: {0}".format(r.read()))
                         return
-                    print("Source: ",source)
+#                    print("Source: ",source)
+                source["message"] = str(source["message"]) + i["message"]    
 
 def index_manager(name):
     url = host+'/'+name
     req = request.Request(url,headers=headers,method='GET')
+
 
 
     try:
@@ -96,7 +96,7 @@ def index_manager(name):
         print("{0} index has {1} number of shards,{2} number of replicas.".format(name,data['index']["number_of_shards"],data['index']["number_of_replicas"]))
         index_ltime = int(str(data['index']['creation_date'])[:10])
         now_ltime = time.time()
-        if (now_ltime - index_ltime) > 386400:
+        if (now_ltime - index_ltime) > 86400:
             req = request.Request(url,headers=headers,method='DELETE')
             r = requests.urlopen(req)
             if not re.match(p,str(r.status)):
