@@ -1,29 +1,28 @@
-import re 
+import re
 import base64
 import gzip
 import json
 import time
+import sys
 
-#import requests
-from botocore.vendored import requests
-
-region = 'cn-north-1'
-service = 'es'
-
+from urllib import request
+from datetime import datetime 
+from functools import reduce
 
 
-
-host = 'https://eshost'
 index = None
-
+host = 'http://172.19.1.186:9200'
 headers = { "Content-Type": "application/json" }
+
+p = r'^2'
+ptime = re.compile(r'([\d]{4}\-[0|1]?[\d]{1}\-[0-3]?[\d]{1}[T|\s]?)?[0-2]{1}[\d]{1}\:[0-5]{1}[\d]{1}\:{1}[0-5]{1}[\d]{1}\.[0-9]{0,3}[Z|\s]?')
+
 
 
 def lambda_handler(event, context):
     compress_data = base64.decodebytes(event['awslogs']['data'].encode('utf-8'))
     log_data = gzip.decompress(compress_data)
     json_data = json.loads(log_data.decode('utf-8'))
-#    print("json_data: ",json_data)
     create_doc(json_data)
     
     return {
@@ -36,44 +35,58 @@ def create_doc(data):
     if data['messageType'] == "CONTROL_MESSAGE":
         return None
     if "/aws/lambda/" in data["logGroup"]:
-        index = '{0}.{1}'.format(data["logGroup"].replace("/aws/lambda/",'').replace('/','_'),int(data["logStream"].split('/')[1])%2)
+        index = '{0}.{1}'.format(data["logGroup"].replace("/aws/lambda/",'').replace('/','_'),datetime.now().day%2).lower()
         url = host+'/'+index + '/_doc' + '/'  
-        source["@log_group"] = data["logGroup"]
-        source["@log_stream"] = data["logStream"]
-        source["@owner"] = data["owner"]
-        source["@message"] = None
+        source["log_group"] = data["logGroup"]
+        source["log_stream"] = data["logStream"]
+        source["owner"] = data["owner"]
+        source["message"] = str()
+        index_manager(index) 
         for i in data["logEvents"]:
             if "START RequestId" in i["message"] or "END RequestId" in i["message"]:
                 continue
+            if ptime.search(i["message"]):
+                try:
+                    if source["message"] != None and source["message"] != '':
+                        source["message"] = reduce(lambda x,y:x+' '+y, re.split(r'\s+',source["message"]))
+                        req = request.Request(url ,data=bytes(json.dumps(source),'utf-8'), headers=headers,method='POST')
+                        r = request.urlopen(req)
+                        if not re.match(p,str(r.status)):
+                            print("doc create Failure Reason: {0}".format(r.read()))
+                            return
+                        print("Source: ",source)
+                        source["message"] = str()
+                except Exception as e:
+                    print("Upload ERROR: ",e)
+                    return 
+                ptmp = ptime.split(i["message"].replace('\n','  '))
+                
+                source["message"] = ptmp[0] + ptmp[2] if re.match(r'[\d]{4}\-[0|1]?[\d]{1}\-[0-3]?[\d]{1}[T|\s]?',str(ptmp[1]))  else ptmp[1]
+                source["id"] = i["id"]
+                ptime_result = ptime.search(i["message"])
+                source["@timestamp"] = (ptime_result.group().strip()+'Z').replace(' ','T')   if re.match(r'[\d]{4}\-[0|1]?[\d]{1}\-[0-3]?[\d]{1}[T|\s]?',ptime_result.group()) else time.strftime("%Y-%m-%dT",time.localtime(time.time())) + ptime_result.group().replace(' ','Z')
             else:
-                source["@message"] += i["message"].replace('\n','  ')
-                ltime = time.localtime(int((str(i["timestamp"])[:10]))+28800)
-                source["@timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S", ltime ) + " UTC+8"
-                source["@id"] = i["id"]
-
-                print("Source: ",source)
-                print("index: ",index)
-       r = requests.post(url ,json=source, headers=headers)
-       if not r.ok:
-           print("Failure Reason: {0}".format(r.reason))
-            
-    if "ecs/" in data["logGroup"]:
-        pass
-    
-
+                source["message"] = str(source["message"]) + i["message"]
 
 def index_manager(name):
-    url = host+'/'+name 
-    r = requests.get(url)
-    if r.ok:
-        data = r.json()[name]['settings']
-        print("{0} index has {1} number of shards,{2} number of replicas.".format(name,data["number_of_shards"],data["number_of_replicas"]))
+    url = host+'/'+name
+    req = request.Request(url,headers=headers,method='GET')
+    try:
+        r = request.urlopen(req)
+        json_data = json.loads(r.read().decode('utf-8'))
+    except Exception as e:
+        print("Index not Exists.",name)
+        return
+    if  re.match(p,str(r.status)):
+        data = json_data[name]['settings']
+        print("{0} index has {1} number of shards,{2} number of replicas.".format(name,data['index']["number_of_shards"],data['index']["number_of_replicas"]))
         index_ltime = int(str(data['index']['creation_date'])[:10])
         now_ltime = time.time()
-        if (now_ltime - index_ltime) > 172800:
-            r = requests.delete(url)
-            if not r.ok:
-                print("Failure Reason: {0}".format(r.reason))
+        if (now_ltime - index_ltime) > 30*86400:
+            req = request.Request(url,headers=headers,method='DELETE')
+            r = requests.urlopen(req)
+            if not re.match(p,str(r.status)):
+                print("Failure Reason: {0}".format(r.read()))
             else:
-                print("Delete success! {0}".format(r.json()))
+                print("Delete success! {0}".format(r.read()))
         
