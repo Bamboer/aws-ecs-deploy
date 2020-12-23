@@ -82,7 +82,7 @@ def index_manager(name):
         print("{0} index has {1} number of shards,{2} number of replicas.".format(name,data['index']["number_of_shards"],data['index']["number_of_replicas"]))
         index_ltime = int(str(data['index']['creation_date'])[:10])
         now_ltime = time.time()
-        if (now_ltime - index_ltime) > 30*86400:
+        if (now_ltime - index_ltime) > 86400:
             req = request.Request(url,headers=headers,method='DELETE')
             r = requests.urlopen(req)
             if not re.match(p,str(r.status)):
