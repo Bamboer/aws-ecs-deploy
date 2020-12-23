@@ -11,7 +11,7 @@ from functools import reduce
 
 
 index = None
-host = 'http://host'
+host = 'http:/'
 headers = { "Content-Type": "application/json" }
 
 p = r'^2'
@@ -43,7 +43,8 @@ def create_doc(data):
         source["message"] = str()
         index_manager(index) 
         for i in data["logEvents"]:
-            if "START RequestId" in i["message"] or "END RequestId" in i["message"]:
+            if "START RequestId" in i["message"] or "REPORT RequestId" in i["message"] :
+                source["message"] = str()
                 continue
             if ptime.search(i["message"]):
                 try:
@@ -68,9 +69,10 @@ def create_doc(data):
             else:
                 source["message"] = str(source["message"]) + i["message"]
                 
-                if data['logEvents'].index(i) == len(data['logEvents'])-2 : 
+                if "END RequestId" in i["message"] or data['logEvents'].index(i) == len(data['logEvents']) - 1: 
 #                    print("LogEvents: ",data['logEvents'],"Length: ",len(data['logEvents']))
                     source["message"] = reduce(lambda x,y:x+' '+y, re.split(r'\s+',source["message"]))
+                    source["@timestamp"]= time.strftime("%Y-%m-%dT%H:%M:%S.%SZ",time.localtime(time.time()))
                     req = request.Request(url ,data=bytes(json.dumps(source),'utf-8'), headers=headers,method='POST')
                     r = request.urlopen(req)
                     if not re.match(p,str(r.status)):
@@ -81,6 +83,7 @@ def create_doc(data):
 def index_manager(name):
     url = host+'/'+name
     req = request.Request(url,headers=headers,method='GET')
+
 
     try:
         r = request.urlopen(req)
@@ -93,7 +96,7 @@ def index_manager(name):
         print("{0} index has {1} number of shards,{2} number of replicas.".format(name,data['index']["number_of_shards"],data['index']["number_of_replicas"]))
         index_ltime = int(str(data['index']['creation_date'])[:10])
         now_ltime = time.time()
-        if (now_ltime - index_ltime) > 86400:
+        if (now_ltime - index_ltime) > 30*86400:
             req = request.Request(url,headers=headers,method='DELETE')
             r = requests.urlopen(req)
             if not re.match(p,str(r.status)):
