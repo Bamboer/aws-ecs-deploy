@@ -11,7 +11,7 @@ from functools import reduce
 
 
 index = None
-host = 'http://172.19.1.186:9200'
+host = 'host:9200'
 headers = { "Content-Type": "application/json" }
 
 p = r'^2'
