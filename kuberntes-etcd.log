@@ -1,0 +1,26 @@
+当etcd集群某节点失效 被集群永久移除时 怎么重新加入集群
+失效节点： etcd3 
+1 清空etcd3 数据
+2 --initial-cluster-state=existing
+3 命令行启动
+/usr/bin/etcd --name=etcd3 --cert-file=/opt/etcd/ssl/server.pem --key-file=/opt/etcd/ssl/server-key.pem 
+ --peer-cert-file=/opt/etcd/ssl/server.pem --peer-key-file=/opt/etcd/ssl/server-key.pem
+ --trusted-ca-file=/opt/etcd/ssl/ca.pem --peer-trusted-ca-file=/opt/etcd/ssl/ca.pem 
+ --initial-advertise-peer-urls=https://10.40.38.40:2380 --listen-peer-urls=https://10.40.38.40:2380 
+ --listen-client-urls=https://10.40.38.40:2379,http://127.0.0.1:2379 
+ --advertise-client-urls=https://10.40.38.40:2379 --initial-cluster-token=etcd-cluster 
+ --initial-cluster=etcd3=https://10.40.38.40:2380,etcd1=https://10.40.45.18:2380,etcd2=https://10.40.18.118:2380 
+ --initial-cluster-state=existing --data-dir=/var/lib/etcd
+
+其它正常节点：etcd1 etcd2 
+1 其各自数据
+2 --initial-cluster-state=existing
+/usr/bin/etcd --name=etcd1 --cert-file=/opt/etcd/ssl/server.pem 
+--key-file=/opt/etcd/ssl/server-key.pem --peer-cert-file=/opt/etcd/ssl/server.pem 
+--peer-key-file=/opt/etcd/ssl/server-key.pem --trusted-ca-file=/opt/etcd/ssl/ca.pem 
+--peer-trusted-ca-file=/opt/etcd/ssl/ca.pem --initial-advertise-peer-urls=https://10.40.18.118:2380 
+--listen-peer-urls=https://10.40.18.118:2380 --listen-client-urls=https://10.40.18.118:2379,http://127.0.0.1:2379 
+--advertise-client-urls=https://10.40.18.118:2379 --initial-cluster-token=etcd-cluster 
+--initial-cluster=etcd1=https://10.40.45.18:2380,etcd2=https://10.40.18.118:2380 
+--initial-cluster-state=existing --data-dir=/var/lib/etcd
+ 
