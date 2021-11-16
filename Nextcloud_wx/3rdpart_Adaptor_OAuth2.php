@@ -24,6 +24,7 @@ use Hybridauth\HttpClient;
  */
 abstract class OAuth2 extends AbstractAdapter implements AdapterInterface
 {
+    protected $userid = '';
     /**
      * Client Identifier
      *
@@ -541,7 +542,7 @@ abstract class OAuth2 extends AbstractAdapter implements AdapterInterface
             $queryParams = http_build_query($this->AuthorizeUrlParameters, '', '&', $this->AuthorizeUrlParametersEncType);
 
         }
-        return $this->authorizeUrl . '?' . $queryParams;
+        return $this->authorizeUrl . '?' . $queryParams.'&state=#wechat_redirect';
     }
 
     /**
